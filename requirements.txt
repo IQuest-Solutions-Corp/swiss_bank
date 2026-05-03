@@ -31,7 +31,7 @@ spacy
 
 # ML Core
 torch
-numpy==2.3.2
+numpy
 transformers==4.53.3
 
 # Document Processing
