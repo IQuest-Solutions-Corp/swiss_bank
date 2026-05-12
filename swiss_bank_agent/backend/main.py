@@ -32,7 +32,9 @@ from services.auth_utils import AuthUtils
 
 # Load environment variables
 from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
+
+load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 # Create email message using shared config
 from email.mime.text import MIMEText
@@ -478,22 +480,12 @@ async def lifespan(app: FastAPI):
             )
             print("✅ Swiss Agent Service initialized")
             
-            # CRITICAL FIX: Ensure RAG service is properly connected
+            #  Ensure RAG service is properly connected
             if services["swiss_agent"] and services["swiss_agent"].rag_system:
-                try:
-                    # Force initialize the RAG service if it's None
-                    if not services["swiss_agent"].rag_system.rag_service:
-                        from internal_agent.rag_service import AnthropicContextualRAGService
-                        services["swiss_agent"].rag_system.rag_service = AnthropicContextualRAGService(
-                            chroma_db_path="./chroma_db",
-                            collection_name="contextual_documents",
-                            quiet_mode=True
-                        )
-                        print("✅ RAG service manually connected to Swiss Agent")
-                    else:
-                        print("✅ RAG service already connected")
-                except Exception as rag_error:
-                    print(f"⚠️ RAG service connection failed: {rag_error}")
+                if services["swiss_agent"].rag_system.rag_service:
+                    print("✅ RAG service connected")
+                else:
+                    print("⚠️ RAG service unavailable — keyword fallback active")
             
             if claude_client and services["swiss_agent"]:
                 services["swiss_agent"].intent_classifier.guardrails.set_expert_client(claude_client)
@@ -644,7 +636,6 @@ def get_triage_service() -> TriageAgentService:
     return services["triage"]
 
 def get_swiss_agent() -> OptimizedSwissAgent:
-    """Get Optimized Swiss Agent service with proper RAG integration"""
     swiss_agent = services.get("swiss_agent")
     if not swiss_agent:
         raise HTTPException(
@@ -654,16 +645,17 @@ def get_swiss_agent() -> OptimizedSwissAgent:
     
     # ENSURE RAG service is properly connected
     if not hasattr(swiss_agent.rag_system, 'rag_service') or swiss_agent.rag_system.rag_service is None:
-        # Re-initialize RAG connection if missing
         try:
-            
+            collection_name = os.getenv("CHROMA_COLLECTION_NAME", "project_documents")
             swiss_agent.rag_system.rag_service = AnthropicContextualRAGService(
                 chroma_db_path="./chroma_db",
+                collection_name=collection_name,
                 quiet_mode=True
             )
+            logger.warning(f"Emergency RAG reconnect used (collection: {collection_name})")
         except Exception as e:
             logger.warning(f"Could not reconnect RAG service: {e}")
-    
+
     return swiss_agent
 
 async def get_current_user(

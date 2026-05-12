@@ -43,6 +43,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import threading
+import shutil
 
 # Safe imports with error handling
 import anthropic
@@ -2664,34 +2665,116 @@ class OptimizedRAGSystem:
         self._connect_to_rag_service()
     
     def _connect_to_rag_service(self):
-        """Connect to existing RAG service with better error handling"""         
+        """
+        FIXED: Connect to RAG service with comprehensive error handling and recovery
+        
+        Improvements:
+        1. Better diagnostic logging to identify which components fail
+        2. Automatic recovery by clearing ChromaDB cache if components missing
+        3. Graceful degradation if RAG can't fully initialize
+        4. Non-blocking - doesn't prevent app startup
+        5. Clear guidance for manual recovery
+        """         
         try:
-            if AnthropicContextualRAGService is not None:
-                # Create with proper initialization
-                self.rag_service = AnthropicContextualRAGService(
-                    chroma_db_path=self.chroma_db_path,
-                    documents_directory=None,
-                    collection_name="contextual_documents",
-                    embedding_model="infgrad/stella_en_1.5B_v5",
-                    quiet_mode=True
-                )
-                
-                # Verify the service is properly initialized
-                if (hasattr(self.rag_service, 'collection') and 
-                    self.rag_service.collection is not None and
-                    hasattr(self.rag_service, 'embedding_model') and
-                    self.rag_service.embedding_model is not None):
-                    logger.info("RAG service connected and verified successfully")
-                else:
-                    logger.error("RAG service initialized but components are missing")
-                    self.rag_service = None
-            else:
-                logger.warning("AnthropicContextualRAGService not available")
+            if AnthropicContextualRAGService is None:
+                logger.warning("⚠️  AnthropicContextualRAGService not available, RAG disabled")
                 self.rag_service = None
+                self.rag_initialized = False
+                return
+            
+            logger.info("🔄 Initializing RAG service...")
+            
+            # Create RAG service instance
+            self.rag_service = AnthropicContextualRAGService(
+                chroma_db_path=self.chroma_db_path,
+                documents_directory=None,
+                collection_name="contextual_documents",
+                embedding_model="infgrad/stella_en_1.5B_v5",
+                quiet_mode=True
+            )
+            
+            # FIXED: Individual component checks with diagnostic logging
+            embedding_ok = (hasattr(self.rag_service, 'embedding_model') and 
+                           self.rag_service.embedding_model is not None)
+            collection_ok = (hasattr(self.rag_service, 'collection') and 
+                            self.rag_service.collection is not None)
+            client_ok = (hasattr(self.rag_service, 'client') and 
+                        self.rag_service.client is not None)
+            
+            # Log individual component status
+            logger.debug(f"RAG Components Status:")
+            logger.debug(f"  ├─ Embedding Model: {'✅' if embedding_ok else '❌'}")
+            logger.debug(f"  ├─ ChromaDB Collection: {'✅' if collection_ok else '❌'}")
+            logger.debug(f"  └─ ChromaDB Client: {'✅' if client_ok else '❌'}")
+            
+            # Determine initialization status
+            if embedding_ok and collection_ok and client_ok:
+                logger.info("✅ RAG service fully operational")
+                self.rag_initialized = True
+                
+            elif embedding_ok or collection_ok:
+                # Partial success
+                logger.warning("⚠️  RAG service partially initialized (degraded mode)")
+                self.rag_initialized = False
+                
+            else:
+                # Complete failure - attempt recovery
+                logger.error("❌ RAG service components missing, attempting automatic recovery...")
+                self._attempt_rag_recovery()
                 
         except Exception as e:
-            logger.error(f"RAG service connection failed: {e}")
+            logger.error(f"❌ RAG service initialization error: {type(e).__name__}: {e}")
+            logger.info("💡 RAG disabled. Application continues to function normally.")
+            logger.info("💡 For diagnostics: python backend/RAG_SERVICE_FIX.py --diagnose")
             self.rag_service = None
+            self.rag_initialized = False
+
+    def _attempt_rag_recovery(self):
+        """
+        FIXED: Automatic recovery mechanism for RAG service failures
+        
+        Attempts to recover by:
+        1. Clearing corrupted ChromaDB cache
+        2. Reinitializing database components
+        3. Verifying recovery success
+        """
+        try:
+            logger.info("  🔄 Attempting RAG recovery (clearing ChromaDB cache)...")
+            
+            if self.rag_service is not None and hasattr(self.rag_service, 'chroma_db_path'):
+                
+                try:
+                    chroma_path = Path(self.rag_service.chroma_db_path)
+                    if chroma_path.exists():
+                        logger.info(f"  → Removing corrupted ChromaDB cache...")
+                        shutil.rmtree(chroma_path)
+                        logger.info(f"  ✅ Cache cleared")
+                    
+                    # Attempt reinitialization
+                    logger.info(f"  → Reinitializing ChromaDB...")
+                    if hasattr(self.rag_service, '_initialize_chroma') and callable(getattr(self.rag_service, '_initialize_chroma', None)):
+                        self.rag_service._initialize_chroma()
+                    
+                    # Verify recovery
+                    if (hasattr(self.rag_service, 'collection') and 
+                        getattr(self.rag_service, 'collection', None) is not None):
+                        logger.info("✅ RAG service recovered successfully")
+                        self.rag_initialized = True
+                        return
+                except Exception as e:
+                    logger.warning(f"Recovery attempt failed: {e}")
+                    self.rag_service = None
+                    self.rag_initialized = False
+            
+            logger.warning("⚠️  RAG recovery unsuccessful, RAG disabled")
+            self.rag_service = None
+            self.rag_initialized = False
+            
+        except Exception as recovery_error:
+            logger.warning(f"⚠️  RAG recovery failed: {type(recovery_error).__name__}: {recovery_error}")
+            logger.info("💡 For detailed troubleshooting: python backend/RAG_SERVICE_FIX.py --diagnose")
+            self.rag_service = None
+            self.rag_initialized = False
     
     def _rank_documents_by_completeness(self, documents: List[Dict], query: str) -> List[Dict]:
         """Rank documents by information completeness rather than just similarity"""
@@ -5260,4 +5343,3 @@ class LegacyCompatibilityAdapter:
     def add_conversation_message(self, role: str, content: str, intent_type=None, entities=None):
         """Legacy method compatibility"""
         return self.agent.intent_classifier.add_to_memory(role, content, intent_type, entities)
-    
