@@ -124,7 +124,7 @@ class AgentService {
 
   constructor() {
     // Use your backend URL - update this to match your backend port
-    this.baseURL = 'http://localhost:8001'; // Updated to match your main.py port
+    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
     
     // Generate a unique user ID for this session (for internal employee)
     this.currentUserId = this.generateEmployeeUserId();

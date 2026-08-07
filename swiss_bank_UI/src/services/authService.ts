@@ -328,7 +328,7 @@ class BackendAlignedAuthService extends SimpleEventEmitter {
   private readonly SESSION_CHECK_INTERVAL = 60 * 1000; // 1 minute
   private readonly REQUEST_TIMEOUT = 30000; // 30 seconds
 
-  constructor(baseUrl = 'http://localhost:8001') {
+  constructor(baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001') {
     super();
     this.baseUrl = baseUrl;
     this.storage = new SimpleStorageManager();
