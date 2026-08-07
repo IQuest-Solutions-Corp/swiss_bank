@@ -1,5 +1,4 @@
-```markdown
-# Swiss Bank Project
+### Swiss Bank Project
 
 This project has two main parts:
 - Frontend: [swiss_bank_UI](swiss_bank_UI)
@@ -15,7 +14,7 @@ The backend expects these environment variables:
 
 ---
 
-## AWS Deployment
+### AWS Deployment
 
 ### 1. Launch EC2
 
