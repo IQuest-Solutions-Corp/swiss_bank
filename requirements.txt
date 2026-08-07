@@ -25,14 +25,14 @@ openai==1.93.0
 
 # Vector Database
 chromadb==1.0.13
-sentence-transformers==5.1.0
+sentence-transformers==2.7.0
 rank-bm25==0.2.2
-spacy==3.8.7
+spacy>=3.8.10,<3.9.0
 
 # ML Core
-torch==2.6.0
+torch
 numpy==2.3.2
-transformers==4.53.3
+transformers==4.36.2
 
 # Document Processing
 PyPDF2==3.0.1
@@ -45,7 +45,6 @@ jinja2==3.1.6
 # Utilities
 python-dotenv==1.1.1
 faker==37.4.0
+async_timeout
 
 gunicorn==21.2.0
-hf-xet==1.1.9
-huggingface_hub[cli]
