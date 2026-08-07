@@ -1,4 +1,4 @@
-#### Swiss Bank Project
+# Swiss Bank Project
 
 This project has two main parts:
 - Frontend: [swiss_bank_UI](swiss_bank_UI)
