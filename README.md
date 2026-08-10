@@ -126,21 +126,70 @@ HF_HUB_DISABLE_SYMLINKS_WARNING=1
 
 Save: `Ctrl+O` → `Enter` → `Ctrl+X`
 
+> `HOST` must be `0.0.0.0` (not `127.0.0.1`) or the browser cannot reach the API on port `8001`.
+
 ---
 
-### 7. Start the backend
+### 7. Start the backend permanently (systemd)
 
+> Do **not** rely on `screen` / Mac terminal. Use systemd so the backend keeps running after you disconnect and after reboot.
+
+Create the service:
 ```bash
-screen -S backend
-source venv/bin/activate
-python main.py
+sudo nano /etc/systemd/system/swissbank.service
 ```
 
-When you see `Uvicorn running on http://0.0.0.0:8001` press `Ctrl+A` then `D` to detach.
+Paste:
+```ini
+[Unit]
+Description=Swiss Bank FastAPI Backend
+After=network.target mongod.service
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/swiss_bank/swiss_bank_agent/backend
+EnvironmentFile=/home/ubuntu/swiss_bank/swiss_bank_agent/backend/.env
+ExecStart=/home/ubuntu/swiss_bank/swiss_bank_agent/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8001
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Save: `Ctrl+O` → `Enter` → `Ctrl+X`
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable swissbank
+sudo systemctl start swissbank
+sudo systemctl status swissbank --no-pager
+```
+
+You should see `Active: active (running)`.
 
 Test:
 ```bash
-curl http://localhost:8001/health
+curl http://127.0.0.1:8001/health
+```
+
+Useful commands later:
+```bash
+sudo systemctl restart swissbank
+sudo systemctl status swissbank --no-pager
+sudo journalctl -u swissbank -n 50 --no-pager
+```
+
+---
+
+### 7b. If disk runs out during pip install
+
+Default EC2 root disk (8GB) is too small for torch. Expand the EBS volume to 30GB in AWS, then on EC2:
+```bash
+sudo growpart /dev/xvda 1
+sudo resize2fs /dev/root
+df -h
 ```
 
 ---
@@ -198,7 +247,9 @@ Open `http://YOUR_EC2_PUBLIC_IP` in your browser.
 
 - [ ] EC2 running, ports 22/80/443/8001 open
 - [ ] MongoDB running: `sudo systemctl status mongod`
-- [ ] Backend running on `0.0.0.0:8001`: `curl http://localhost:8001/health`
+- [ ] Backend systemd service running: `sudo systemctl status swissbank`
+- [ ] Backend health locally: `curl http://127.0.0.1:8001/health`
+- [ ] Public health check works in browser: `http://YOUR_EC2_PUBLIC_IP:8001/health`
 - [ ] Frontend built with correct `VITE_BACKEND_URL`
 - [ ] Nginx serving from `/dist`: `sudo systemctl status nginx`
 
