@@ -73,6 +73,42 @@ sudo systemctl start mongod
 sudo systemctl enable mongod
 ```
 
+### 4b. Add a test customer (required for EVA login)
+
+EVA only works for emails that exist in MongoDB `customers`. Add your test email:
+
+```bash
+cd /home/ubuntu/swiss_bank/swiss_bank_agent/backend
+source venv/bin/activate
+python3 -c "
+import asyncio, os, uuid
+from datetime import datetime
+from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+load_dotenv()
+
+async def main():
+    client = AsyncIOMotorClient(os.getenv('MONGODB_CONNECTION_STRING'))
+    db = client[os.getenv('MONGODB_DATABASE_NAME', 'swiss_bank')]
+    await db.customers.update_one(
+        {'email': 'YOUR_EMAIL@gmail.com'},
+        {'\$set': {
+            'customer_id': str(uuid.uuid4()),
+            'name': 'Test User',
+            'email': 'YOUR_EMAIL@gmail.com',
+            'phone': '+1234567890',
+            'account_type': 'premium',
+            'account_status': 'active',
+            'is_verified': True,
+            'registration_date': datetime.now().isoformat()
+        }},
+        upsert=True
+    )
+    print('Customer added')
+    client.close()
+
+asyncio.run(main())
+"
 ---
 
 ### 5. Set up Python backend
@@ -252,6 +288,7 @@ Open `http://YOUR_EC2_PUBLIC_IP` in your browser.
 - [ ] Public health check works in browser: `http://YOUR_EC2_PUBLIC_IP:8001/health`
 - [ ] Frontend built with correct `VITE_BACKEND_URL`
 - [ ] Nginx serving from `/dist`: `sudo systemctl status nginx`
+- [ ] Test customer exists in MongoDB (for EVA verify)
 
 ---
 
@@ -271,6 +308,8 @@ cd swiss_bank_UI
 npm install
 npm run dev
 ```
+
+> Customer records must exist in the `customers` MongoDB collection for EVA authentication to work.
 
 Frontend: `http://localhost:8080` — Backend: `http://localhost:8001`
 
