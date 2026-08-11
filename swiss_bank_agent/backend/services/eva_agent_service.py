@@ -423,9 +423,10 @@ class EvaAgentService:
         """Call Anthropic Claude API with better error handling"""
         try:
             response = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                #model="claude-sonnet-4-20250514",
+                model="claude-sonnet-5",
                 max_tokens=1500,  # Allow longer responses for natural conversation
-                temperature=0.7,  # Higher temperature for more natural responses
+                #temperature=0.7,  # Higher temperature for more natural responses
                 messages=[{"role": "user", "content": prompt}]
             )
             

@@ -1073,9 +1073,10 @@ Is there any additional information you'd like to provide about this case?"""
         """Call Anthropic Claude API"""
         try:
             response = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                #model="claude-sonnet-4-20250514",
+                model="claude-sonnet-5",
                 max_tokens=2000,
-                temperature=0.3,  # Lower temperature for more consistent classification
+                # temperature=0.3,  # Lower temperature for more consistent classification
                 messages=[{"role": "user", "content": prompt}]
             )
             
