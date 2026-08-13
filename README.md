@@ -1,6 +1,9 @@
 # Swiss Bank Project
 
-> **Important:** This bot is designed **only for fraudulent activity escalations**. It is not a general customer-support or banking assistant. Use it only to report, triage, and escalate suspected fraud.
+> **Important**
+>
+> - This bot is designed **only for fraudulent activity escalations**. It is not a general customer-support or banking assistant. Use it only to report, triage, and escalate suspected fraud.
+> - OTP emails are sent from a personal Gmail SMTP account. Gmail may put the verification code in **Spam**. If you do not see the OTP in Inbox, check **Spam / Promotions**, open the mail, and click **Not spam**. After that, later OTPs usually land in Inbox.
 
 This project has two main parts:
 - Frontend: [swiss_bank_UI](swiss_bank_UI)
