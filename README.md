@@ -1,5 +1,8 @@
 # Swiss Bank Project
 
+> **Important:** This bot is designed **only for fraudulent activity escalations**. It is not a general customer-support or banking assistant. Use it only to report, triage, and escalate suspected fraud.
+This project has two main parts:
+
 This project has two main parts:
 - Frontend: [swiss_bank_UI](swiss_bank_UI)
 - Backend: [swiss_bank_agent/backend](swiss_bank_agent/backend)
